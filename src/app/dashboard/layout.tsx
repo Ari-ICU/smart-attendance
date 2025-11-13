@@ -5,19 +5,23 @@ import { useState, useEffect, useLayoutEffect, useRef } from "react";
 import { useRouter } from 'next/navigation';
 import { useAuthContext } from '@/context/AuthContext';
 import { useDashboardPage } from "@/hooks/useDashboardPage";
+import dynamic from "next/dynamic";
+
 import Header from "@/common/Header";
 
 // Static imports for all dashboard page components
 import Sidebar from "@/common/Sidebar";
-import DashboardPage from "./page";
-import AttendancePage from "./attendance/page";
-import UsersPage from "./users/page";
-import CreateUserPage from "./users/[type]/page";
-import PayrollPage from "./payroll/page";
-import SettingsPage from "./settings/page";
-import PermissionsTypePage from "./permissions/[type]/page";
-import DepartmentPage from "./department/page";
-import ProfilePage from "./profile/page";
+
+const DashboardPage = dynamic(() => import("./page"), { ssr: false });
+const AttendancePage = dynamic(() => import("./attendance/page"), { ssr: false });
+const UsersPage = dynamic(() => import("./users/page"), { ssr: false });
+const CreateUserPage = dynamic(() => import("./users/[type]/page"), { ssr: false });
+const PayrollPage = dynamic(() => import("./payroll/page"), { ssr: false });
+const SettingsPage = dynamic(() => import("./settings/page"), { ssr: false });
+const PermissionsTypePage = dynamic(() => import("./permissions/[type]/page"), { ssr: false });
+const DepartmentPage = dynamic(() => import("./department/page"), { ssr: false });
+const ProfilePage = dynamic(() => import("./profile/page"), { ssr: false });
+
 
 export default function DashboardLayout() {
     const { page: currentPage, setPage } = useDashboardPage();
