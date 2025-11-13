@@ -482,7 +482,7 @@ export function LiveCameraView() {
 
                         {isAllowedTime && !hasRecentlyMarked && !isLoadingSettings && (
                             <div
-                                className={`absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-64 h-64 rounded-lg border-4 transition-all duration-300 ease-in-out
+                                className={`absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 aspect-square h-[85%] rounded-lg border-4 transition-all duration-300 ease-in-out
                                 ${isMarking ? 'border-yellow-500/50 animate-pulse' : 'border-white/50'}`}
                             />
                         )}
