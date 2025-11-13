@@ -108,8 +108,15 @@ export function SettingsView() {
                 await updateAttendanceSettings(attendancePayload);
             }
 
-            // Update tax settings
-            await updateTaxSettings(localTaxSettings);
+            // Update tax settings - map null to 0 for payload
+            const taxPayload = {
+                taxPercentage: localTaxSettings.taxPercentage ?? 0,
+                incomeTax: localTaxSettings.incomeTax ?? 0,
+                healthInsurance: localTaxSettings.healthInsurance ?? 0,
+                otherDeductions: localTaxSettings.otherDeductions ?? 0,
+                overtimeRate: localTaxSettings.overtimeRate ?? 0,
+            };
+            await updateTaxSettings(taxPayload);
 
             toast.success('Settings saved successfully!');
         } catch (err: any) {

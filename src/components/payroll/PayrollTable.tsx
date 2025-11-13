@@ -1,4 +1,5 @@
 'use client';
+import React from 'react';
 import { useState, useMemo } from 'react';
 import { Card } from '../ui/card';
 import { Table, TableBody, TableCell, TableHeader, TableHead, TableRow } from '../ui/table';
@@ -148,7 +149,7 @@ interface PayrollTableRowsProps {
     isLoading: boolean;
     formatHours: (hours?: number) => string;
     formatCurrency: (value?: number) => string;
-    getStatusBadge: (status: 'pending' | 'processed' | 'paid') => JSX.Element;
+    getStatusBadge: (status: 'pending' | 'processed' | 'paid') => React.JSX.Element;
     handlePay: (id: string) => void;
     handleView: (payroll: EmployeePayroll) => void;
 }
@@ -332,7 +333,7 @@ interface ViewPayrollModalProps {
     payroll: EmployeePayroll | null;
     formatHours: (hours?: number) => string;
     formatCurrency: (value?: number) => string;
-    getStatusBadge: (status: 'pending' | 'processed' | 'paid') => JSX.Element;
+    getStatusBadge: (status: 'pending' | 'processed' | 'paid') => React.JSX.Element;
     exportPayslip: (id: string) => void;
 }
 
