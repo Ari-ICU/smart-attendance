@@ -6,6 +6,7 @@ import { Toaster } from '@/components/ui/sonner';
 import { LoadingProvider } from "@/context/LoadingContext";
 import RouteChangeLoader from "@/common/RouteChangeLoader"; // Adjust path as needed
 import { AuthProvider } from "@/context/AuthContext"; // <-- import AuthProvider
+import { Suspense } from 'react'; // ✅ Add Suspense import
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -38,7 +39,10 @@ export default function RootLayout({
             <AuthProvider> {/* <-- Wrap children with AuthProvider */}
               <RouteChangeLoader />
               <Toaster />
-              {children}
+              {/* ✅ Wrap children in Suspense to handle useSearchParams bailouts in pages/error boundaries */}
+              <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Loading...</div>}>
+                {children}
+              </Suspense>
             </AuthProvider>
           </LoadingProvider>
         </ThemeProvider>
