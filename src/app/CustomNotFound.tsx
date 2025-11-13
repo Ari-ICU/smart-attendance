@@ -1,11 +1,13 @@
+// src/app/CustomNotFound.tsx (client component)
 'use client';
 
-import { Link } from 'lucide-react';
+import Link from 'next/link';
+import { ArrowLeft } from 'lucide-react'; // Use lucide-react icon for the link
 import { useSearchParams } from 'next/navigation';
 
 export default function CustomNotFound() {
-    const searchParams = useSearchParams(); // This is the hook causing the error
-    const errorCode = searchParams?.get('error'); // Example usage
+    const searchParams = useSearchParams();
+    const errorCode = searchParams?.get('error'); // Example usage of useSearchParams
 
     return (
         <div className="text-center p-8 max-w-md mx-auto">
@@ -13,7 +15,10 @@ export default function CustomNotFound() {
             <p className="text-gray-600 mb-4">
                 {errorCode ? `Error: ${errorCode}` : 'Sorry, this page doesn\'t exist.'}
             </p>
-            <Link href="/" className="text-blue-500 hover:underline">Go Home</Link>
+            <Link href="/" className="inline-flex items-center gap-2 text-blue-500 hover:underline">
+                <ArrowLeft className="w-4 h-4" />
+                Go Home
+            </Link>
         </div>
     );
 }

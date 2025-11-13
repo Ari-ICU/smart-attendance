@@ -1,10 +1,14 @@
-'use client';
+import { redirect } from "next/navigation";
 
-import { redirect, useSearchParams } from "next/navigation";
+interface DashboardPageProps {
+  searchParams: { page?: string };
+}
 
-export default function Page() {
-  const searchParams = useSearchParams();
-  const pageParam = searchParams?.get("page") ?? btoa("dashboard");
+// ✅ Force dynamic rendering to bypass prerender issues (redirect pages don't need static prerender)
+export const dynamic = 'force-dynamic';
+
+export default function DashboardPage({ searchParams }: DashboardPageProps) {
+  const pageParam = searchParams.page ?? btoa("dashboard");
 
   return redirect(`/dashboard?page=${pageParam}`);
 }

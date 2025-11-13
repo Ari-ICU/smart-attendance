@@ -1,7 +1,9 @@
-'use client'; // Not needed here since this is a server component/page
+// Remove 'use client'; - pages are server components by default in App Router
 
 import { Suspense } from "react";
 import { DepartmentTable } from "@/components/department/DepartmentTable";
+
+export const dynamic = 'force-dynamic';
 
 export default function DepartmentPage() {
     return (

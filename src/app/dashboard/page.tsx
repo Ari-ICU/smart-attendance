@@ -1,10 +1,12 @@
-'use client';
-
+import { Suspense } from "react";
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { RecentAttendance } from '@/components/RecentAttendance';
 import { Users, UserCheck, UserX, TrendingUp } from 'lucide-react';
 import { LiveCameraView } from '@/components/LiveCameraView';
+
+// ✅ Force dynamic rendering to bypass prerender issues with useSearchParams in child components
+export const dynamic = 'force-dynamic';
 
 const stats = [
     {
@@ -67,15 +69,16 @@ export default function DashboardPage() {
                     );
                 })}
             </div>
-            {/* Main Content Grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-
-                {/* Live Camera */}
-                <LiveCameraView />
-                
-                {/* Recent Attendance */}
-                <RecentAttendance />
-            </div>
+            {/* Main Content Grid - Wrapped in Suspense for useSearchParams in children */}
+            <Suspense fallback={<div className="animate-pulse grid grid-cols-1 lg:grid-cols-2 gap-6 h-64"><div className="h-full bg-gray-200 rounded-lg"></div><div className="h-full bg-gray-200 rounded-lg"></div></div>}>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    {/* Live Camera */}
+                    <LiveCameraView />
+                    
+                    {/* Recent Attendance */}
+                    <RecentAttendance />
+                </div>
+            </Suspense>
         </div>
     );
 }
