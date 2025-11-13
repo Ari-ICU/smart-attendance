@@ -4,9 +4,9 @@ import "./globals.css";
 import { ThemeProvider } from "@/context/ThemeProvider";
 import { Toaster } from '@/components/ui/sonner';
 import { LoadingProvider } from "@/context/LoadingContext";
-import RouteChangeLoader from "@/common/RouteChangeLoader"; // Adjust path as needed
-import { AuthProvider } from "@/context/AuthContext"; // <-- import AuthProvider
-import { Suspense } from 'react'; // ✅ Add Suspense import
+import RouteChangeLoader from "@/common/RouteChangeLoader";
+import { AuthProvider } from "@/context/AuthContext";
+import { Suspense } from 'react';
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -31,16 +31,15 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        suppressHydrationWarning
+        suppressHydrationWarning // ✅ Suppresses global hydration warnings (e.g., from dates/auth)
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <ThemeProvider>
           <LoadingProvider>
-            <AuthProvider> {/* <-- Wrap children with AuthProvider */}
+            <AuthProvider key="auth-provider"> {/* ✅ Key forces re-mount if auth changes */}
               <RouteChangeLoader />
               <Toaster />
-              {/* ✅ Wrap children in Suspense to handle useSearchParams bailouts in pages/error boundaries */}
-              <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Loading...</div>}>
+              <Suspense fallback={<div className="min-h-screen flex items-center justify-center p-4">Loading app...</div>}>
                 {children}
               </Suspense>
             </AuthProvider>
