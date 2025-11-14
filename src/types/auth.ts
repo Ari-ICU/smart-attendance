@@ -58,6 +58,7 @@ export interface AuthResponse {
     user: User | null;
     accessToken?: string;
     refreshToken?: string
+    message?: string; // add this
     error?: string;
     token: string; // ✅ add this
 }

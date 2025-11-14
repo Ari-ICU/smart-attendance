@@ -65,9 +65,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             setError(null);
             return res;
         } catch (err: any) {
-            const errorMessage = err.response?.data?.message || err.message || 'Login failed';
+            // Extract custom message from backend response (adjust based on errorResponse format)
+            let errorMessage = 'Login failed';
+            if (err.response?.data) {
+                // Common formats: { message: '...', details: '...' } or { error: '...', message: '...' }
+                errorMessage = err.response.data.details || err.response.data.message || err.response.data.error || err.message;
+            } else {
+                errorMessage = err.message || errorMessage;
+            }
             setErrorWithTimeout(errorMessage);
-            throw err;
+            // Re-throw with custom message so components get the right err.message
+            throw new Error(errorMessage);
         } finally {
             setIsLoading(false);
         }
@@ -79,15 +87,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         try {
             logIfDev('Registering with data', { ...data, password: '***' });
             const res = await AuthService.register(data);
-            setUser(res.user);
-            setTokenState(res.token || null);
-            setAccessToken(res.token || null);
+            // On success, do NOT auto-set user/token (await approval); just return
+            setError(null);
             return res;
         } catch (err: any) {
-            const errorMessage = err.response?.data?.message || err.message || 'Registration failed';
-            logIfDev('Registration error', err);
+            // Extract custom message
+            let errorMessage = 'Registration failed';
+            if (err.response?.data) {
+                errorMessage = err.response.data.details || err.response.data.message || err.response.data.error || err.message;
+            } else {
+                errorMessage = err.message || errorMessage;
+            }
+            logIfDev('Registration error', { message: errorMessage });
             setErrorWithTimeout(errorMessage);
-            throw err;
+            // Re-throw with custom message
+            throw new Error(errorMessage);
         } finally {
             setIsLoading(false);
         }
@@ -107,12 +121,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             setError(null);
             return { token: newToken, user: refreshedUser } as AuthResponse;
         } catch (err: any) {
+            // Extract custom message for refresh errors
+            let errorMessage = 'Failed to refresh token';
+            if (err.response?.data) {
+                errorMessage = err.response.data.details || err.response.data.message || err.response.data.error || err.message;
+            } else {
+                errorMessage = err.message || errorMessage;
+            }
             setUser(null);
             setTokenState(null);
             setAccessToken(null);
-            const errorMessage = err.message || 'Failed to refresh token';
             setErrorWithTimeout(errorMessage);
-            throw err;
+            // Re-throw with custom message
+            throw new Error(errorMessage);
         } finally {
             setIsLoading(false);
         }
@@ -143,9 +164,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             return { user: updatedUser, token: token || '' } as AuthResponse;
         } catch (err: any) {
             if (user) setUser(user); // rollback
-            const errorMessage = err.message || 'Failed to update profile';
+            // Extract custom message
+            let errorMessage = 'Failed to update profile';
+            if (err.response?.data) {
+                errorMessage = err.response.data.details || err.response.data.message || err.response.data.error || err.message;
+            } else {
+                errorMessage = err.message || errorMessage;
+            }
             setErrorWithTimeout(errorMessage);
-            throw err;
+            // Re-throw with custom message
+            throw new Error(errorMessage);
         } finally {
             setIsLoading(false);
         }

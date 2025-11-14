@@ -55,10 +55,12 @@ export function UserRegistrationForm({
     }, [fetchDepartments]);
 
     useEffect(() => {
+        if (!departments || departments.length === 0) return; // wait for departments
+
         const dept = departments.find((d) => d.name === formData.department);
         if (dept && Array.isArray(dept.positions)) {
             setPositions(dept.positions);
-            if (!dept.positions.includes(formData.position || '')) {
+            if (formData.position && !dept.positions.includes(formData.position)) {
                 setFormData((prev) => ({ ...prev, position: '' }));
             }
         } else {
@@ -66,6 +68,7 @@ export function UserRegistrationForm({
             setFormData((prev) => ({ ...prev, position: '' }));
         }
     }, [formData.department, departments, setFormData]);
+
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0]) {

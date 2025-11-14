@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { useAuthContext } from "@/context/AuthContext"; // <-- use context
+import { useAuthContext } from "@/context/AuthContext";
 import { useUsers } from "@/hooks/user.hook";
+import { useDepartments } from "@/hooks/department.hook"; // ✅ Added: Proper departments hook
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -15,17 +16,44 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-import { User, Mail, Lock, Eye, EyeOff, Building, MapPin, Phone, IdCard, ImagePlus, Clock, Users } from "lucide-react";
+import { User, Mail, Lock, Eye, EyeOff, Building, MapPin, Phone, IdCard, ImagePlus, Clock, Users, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { useDashboardPage } from '@/hooks/useDashboardPage';
 import Link from 'next/link';
+
+interface User {
+    _id: string;
+    id?: string; // Fallback for legacy
+    name: string;
+    email: string;
+    department?: string;
+    role?: string;
+    image?: string;
+    employeeId?: string;
+    phoneNumber?: string;
+    location?: string;
+    status?: string;
+}
+
+interface RegisterData {
+    name: string;
+    image: string;
+    employeeId: string;
+    department: string;
+    email: string;
+    phoneNumber: string;
+    location: string;
+    password: string;
+    role: string;
+}
 
 export default function AuthPage() {
     const params = useParams();
     const { setPage } = useDashboardPage();
     const type = params?.type ?? 'login';
-    const { login, register, isLoading, isAuthenticated } = useAuthContext(); // <-- use context
-    const { users, loading: usersLoading } = useUsers();
+    const { login, register, isLoading, isAuthenticated } = useAuthContext();
+    const { users, loading: usersLoading } = useUsers() as { users: User[]; loading: boolean };
+    const { departments: availableDepartments, loading: deptsLoading } = useDepartments(); // ✅ Updated: Use proper departments hook
     const router = useRouter();
 
     /** Redirect authenticated users */
@@ -35,18 +63,16 @@ export default function AuthPage() {
         }
     }, [isAuthenticated, isLoading, router]);
 
-    /** Department filter logic */
-    const [availableDepartments, setAvailableDepartments] = useState<string[]>([]);
+    /** Department filter logic (now from users for filter, but select from depts) */
     const [selectedDepartment, setSelectedDepartment] = useState<string>('__all__');
-    const [filteredUsers, setFilteredUsers] = useState(users);
+    const [filteredUsers, setFilteredUsers] = useState<User[]>([]);
 
     useEffect(() => {
         if (users.length > 0) {
-            const departments = Array.from(new Set(users.map(user => user.department).filter(Boolean)));
-            setAvailableDepartments(departments);
-
-            if (selectedDepartment === '__all__') setFilteredUsers(users);
-            else setFilteredUsers(users.filter(user => user.department === selectedDepartment));
+            const filtered = selectedDepartment === '__all__'
+                ? users
+                : users.filter(user => user.department === selectedDepartment);
+            setFilteredUsers(filtered);
         }
     }, [users, selectedDepartment]);
 
@@ -54,26 +80,36 @@ export default function AuthPage() {
     const [loginData, setLoginData] = useState({ email: '', password: '' });
     const [showLoginPassword, setShowLoginPassword] = useState(false);
 
-    const handleLoginChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleLoginChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value } = e.target;
         setLoginData(prev => ({ ...prev, [name]: value }));
-    };
+    }, []);
 
-    const toggleLoginPassword = () => setShowLoginPassword(prev => !prev);
+    const toggleLoginPassword = useCallback(() => setShowLoginPassword(prev => !prev), []);
 
-    const handleLoginSubmit = async (e: React.FormEvent) => {
+    const handleLoginSubmit = useCallback(async (e: React.FormEvent) => {
         e.preventDefault();
-        try {
-            await login(loginData); // AuthResponse
-            toast.success('Login successful!');
-        } catch (err: any) {
-            toast.error(err.message || 'Login failed');
+        if (!loginData.email || !loginData.password) {
+            toast.error('Please fill in all fields');
+            return;
         }
-    };
+        try {
+            await login(loginData);
+            toast.success('Login successful!');
+            router.replace('/dashboard?page=dashboard'); // Ensure redirect
+        } catch (err: any) {
+            const message = err.message || 'Login failed';
+            toast.error(message);
 
+            // Optional: More user-friendly handling for pending status
+            if (message.includes('not approved')) {
+                toast.info('Your account is pending admin approval. Please contact your administrator.');
+            }
+        }
+    }, [loginData, login, router]);
 
     /** Register state */
-    const [registerData, setRegisterData] = useState({
+    const [registerData, setRegisterData] = useState<RegisterData>({
         name: '',
         image: '',
         employeeId: '',
@@ -86,24 +122,31 @@ export default function AuthPage() {
     });
     const [showRegisterPassword, setShowRegisterPassword] = useState(false);
     const [selectedUserId, setSelectedUserId] = useState<string>('');
+    const [imageFile, setImageFile] = useState<File | null>(null);
+    const [uploadingImage, setUploadingImage] = useState(false);
 
-    const handleUserSelect = (userId: string) => {
+    // Reset form for new registration
+    const resetRegisterForm = useCallback((dept?: string) => {
+        setRegisterData({
+            name: '',
+            image: '',
+            employeeId: '',
+            department: dept || '',
+            email: '',
+            phoneNumber: '',
+            location: '',
+            password: '',
+            role: 'user'
+        });
+        setImageFile(null);
+        setSelectedUserId('');
+    }, []);
+
+    const handleUserSelect = useCallback((userId: string) => {
         if (userId === '__new__') {
-            setSelectedUserId('');
-            setRegisterData({
-                name: '',
-                image: '',
-                employeeId: '',
-                department: selectedDepartment === '__all__' ? '' : selectedDepartment,
-                email: '',
-                phoneNumber: '',
-                location: '',
-                password: '',
-                role: 'user'
-            });
+            resetRegisterForm(selectedDepartment === '__all__' ? undefined : selectedDepartment);
         } else {
-            setSelectedUserId(userId);
-            const selectedUser = filteredUsers.find(u => u._id === userId);
+            const selectedUser = filteredUsers.find(u => u._id === userId || u.id === userId);
             if (selectedUser) {
                 setRegisterData({
                     name: selectedUser.name || '',
@@ -116,50 +159,68 @@ export default function AuthPage() {
                     password: '',
                     role: selectedUser.role || 'user'
                 });
+                setSelectedUserId(userId);
+                setImageFile(null); // Reset file for existing user
             }
         }
-    };
+    }, [filteredUsers, selectedDepartment, resetRegisterForm]);
 
-    const handleDepartmentFilter = (department: string) => {
+    const handleDepartmentFilter = useCallback((department: string) => {
         setSelectedDepartment(department);
-        setSelectedUserId('');
-        setRegisterData({
-            name: '',
-            image: '',
-            employeeId: '',
-            department: department === '__all__' ? '' : department,
-            email: '',
-            phoneNumber: '',
-            location: '',
-            password: '',
-            role: 'user'
-        });
-    };
+        resetRegisterForm(department === '__all__' ? undefined : department);
+    }, [resetRegisterForm]);
 
-    const handleRegisterChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const handleRegisterChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => { // ✅ Removed HTMLSelectElement since no free-text selects
         const { name, value } = e.target;
         setRegisterData(prev => ({ ...prev, [name]: value }));
-    };
+    }, []);
 
-    const handleRegisterImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
+    const handleImageUpload = useCallback(async (file: File) => {
         if (!file) return;
+        setUploadingImage(true);
+        try {
+            // TODO: Implement actual upload to backend endpoint (e.g., /api/upload/image)
+            // For now, simulate with base64 preview; replace with fetch POST to get URL
+            const reader = new FileReader();
+            reader.onload = () => {
+                setRegisterData(prev => ({ ...prev, image: reader.result as string })); // Temp base64
+                toast.success('Image preview loaded (upload to server in production)');
+            };
+            reader.readAsDataURL(file);
+            // Example upload logic (uncomment and adjust endpoint):
+            // const formData = new FormData();
+            // formData.append('image', file);
+            // const res = await fetch('/api/upload/image', { method: 'POST', body: formData });
+            // if (res.ok) {
+            //     const { url } = await res.json();
+            //     setRegisterData(prev => ({ ...prev, image: url }));
+            //     toast.success('Image uploaded successfully');
+            // }
+        } catch (err) {
+            toast.error('Image upload failed');
+        } finally {
+            setUploadingImage(false);
+        }
+    }, []);
 
-        const reader = new FileReader();
-        reader.onload = () => {
-            setRegisterData(prev => ({ ...prev, image: reader.result as string }));
-        };
-        reader.readAsDataURL(file);
-    };
+    const handleRegisterImageChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            setImageFile(file);
+            handleImageUpload(file);
+        }
+    }, [handleImageUpload]);
 
-    const toggleRegisterPassword = () => setShowRegisterPassword(prev => !prev);
+    const toggleRegisterPassword = useCallback(() => setShowRegisterPassword(prev => !prev), []);
 
-    const handleRegisterSubmit = async (e: React.FormEvent) => {
+    const handleRegisterSubmit = useCallback(async (e: React.FormEvent) => {
         e.preventDefault();
 
-        // Validate required fields
-        if (!registerData.name || !registerData.email || !registerData.password) {
-            toast.error('Please fill in all required fields');
+        // Enhanced validation
+        const requiredFields = ['name', 'email', 'employeeId', 'password', 'department'];
+        const missingFields = requiredFields.filter(field => !registerData[field as keyof RegisterData]);
+        if (missingFields.length > 0) {
+            toast.error(`Please fill in: ${missingFields.join(', ')}`);
             return;
         }
 
@@ -168,23 +229,32 @@ export default function AuthPage() {
             return;
         }
 
-        try {
-            console.log('[AuthPage] Submitting registration:', { ...registerData, password: '***' });
-            const result = await register(registerData);
-            console.log('[AuthPage] Registration result:', result);
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(registerData.email)) {
+            toast.error('Please enter a valid email');
+            return;
+        }
 
-            if (result.success !== false) {
-                toast.success('Registration successful! You are now logged in.');
-                // Optionally redirect
-                // router.push('/dashboard?page=dashboard');
-            } else {
-                toast.error(result.error || 'Registration failed');
-            }
+        try {
+            // Prepare payload (backend ignores role/status if not admin; adds status: 'pending')
+            const payload = {
+                ...registerData,
+                status: 'pending' as const,
+                // Note: image should be URL from upload, not base64 in production
+            };
+
+            console.log('[AuthPage] Submitting registration:', { ...payload, password: '***' }); // Keep for dev; remove in prod
+            const result = await register(payload);
+            console.log('[AuthPage] Registration result:', result); // Keep for dev
+
+            // Backend returns { user, message } on success, throws on error
+            toast.success(result?.message || 'Registration successful! Please wait for admin approval.');
+            resetRegisterForm(); // Reset form on success
+            // Optionally switch to login: setPage('login');
         } catch (err: any) {
-            console.error('[AuthPage] Registration error:', err);
+            console.error('[AuthPage] Registration error:', err); // Keep for dev
             toast.error(err.message || 'Registration failed');
         }
-    };
+    }, [registerData, register, resetRegisterForm]);
 
     if (type === 'login') {
         return (
@@ -268,7 +338,6 @@ export default function AuthPage() {
     }
 
     if (type === 'register') {
-        console.log('[AuthPage] Rendering register form', { usersLoading, filteredUsersLength: filteredUsers.length });
         return (
             <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 py-12 px-4 sm:px-6 lg:px-8">
                 <Card className="w-full max-w-4xl shadow-xl border-0 bg-white/80 backdrop-blur-sm">
@@ -301,8 +370,8 @@ export default function AuthPage() {
                                     <SelectContent>
                                         <SelectItem value="__all__">-- All Departments --</SelectItem>
                                         {availableDepartments.map((dept) => (
-                                            <SelectItem key={dept} value={dept}>
-                                                {dept}
+                                            <SelectItem key={dept.id || dept._id || dept.name} value={dept.name}>
+                                                {dept.name}
                                             </SelectItem>
                                         ))}
                                     </SelectContent>
@@ -327,8 +396,8 @@ export default function AuthPage() {
                                     <SelectContent>
                                         <SelectItem value="__new__">-- Create New User --</SelectItem>
                                         {filteredUsers.map((user) => (
-                                            <SelectItem key={user.id} value={user.id}>
-                                                {user.name} ({user.email}) - {user.department}
+                                            <SelectItem key={user._id || user.id} value={user._id || user.id || ''}>
+                                                {user.name} ({user.email}) - {user.department || 'N/A'}
                                             </SelectItem>
                                         ))}
                                     </SelectContent>
@@ -342,27 +411,32 @@ export default function AuthPage() {
                             </div>
                             {/* Grid for profile fields */}
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                {/* Name */}
+                                {/* Name - Updated to Select from existing users */}
                                 <div className="space-y-1">
-                                    <Label htmlFor="name">Full Name</Label>
+                                    <Label htmlFor="name">Full Name <span className="text-red-500">*</span></Label>
                                     <div className="relative">
                                         <User className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                                        <Input
-                                            id="name"
-                                            name="name"
-                                            type="text"
+                                        <Select
                                             value={registerData.name}
-                                            onChange={handleRegisterChange}
-                                            placeholder="Enter your full name"
-                                            className="pl-10"
-                                            required
+                                            onValueChange={(value) => setRegisterData(prev => ({ ...prev, name: value }))}
                                             disabled={isLoading}
-                                        />
+                                        >
+                                            <SelectTrigger className="pl-10">
+                                                <SelectValue placeholder="Select name from existing users" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {users.map((user) => (
+                                                    <SelectItem key={user._id || user.id} value={user.name}>
+                                                        {user.name} ({user.email})
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
                                     </div>
                                 </div>
                                 {/* Employee ID */}
                                 <div className="space-y-1">
-                                    <Label htmlFor="employeeId">Employee ID</Label>
+                                    <Label htmlFor="employeeId">Employee ID <span className="text-red-500">*</span></Label>
                                     <div className="relative">
                                         <IdCard className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                                         <Input
@@ -378,27 +452,34 @@ export default function AuthPage() {
                                         />
                                     </div>
                                 </div>
-                                {/* Department */}
+                                {/* Department - Updated Select from proper departments hook */}
                                 <div className="space-y-1">
-                                    <Label htmlFor="department">Department</Label>
+                                    <Label htmlFor="department">Department <span className="text-red-500">*</span></Label>
                                     <div className="relative">
-                                        <Building className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                                        <Input
-                                            id="department"
-                                            name="department"
-                                            type="text"
+                                        <Select
                                             value={registerData.department}
-                                            onChange={handleRegisterChange}
-                                            placeholder="Enter department"
-                                            className="pl-10"
-                                            required
-                                            disabled={isLoading}
-                                        />
+                                            onValueChange={(value) => setRegisterData(prev => ({ ...prev, department: value }))}
+                                            disabled={isLoading || deptsLoading}
+                                        >
+                                            <SelectTrigger className="pl-10">
+                                                <Building className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                                                <SelectValue placeholder="Select department" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="">Other</SelectItem>
+                                                {availableDepartments.map((dept) => (
+                                                    <SelectItem key={dept.id || dept._id || dept.name} value={dept.name}>
+                                                        {dept.name}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
                                     </div>
+                                    {deptsLoading && <p className="text-xs text-gray-500 mt-1">Loading departments...</p>}
                                 </div>
                                 {/* Email */}
                                 <div className="space-y-1">
-                                    <Label htmlFor="email">Email</Label>
+                                    <Label htmlFor="email">Email <span className="text-red-500">*</span></Label>
                                     <div className="relative">
                                         <Mail className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                                         <Input
@@ -414,7 +495,7 @@ export default function AuthPage() {
                                         />
                                     </div>
                                 </div>
-                                {/* Phone Number */}
+                                {/* Phone Number - Made optional with visual cue */}
                                 <div className="space-y-1">
                                     <Label htmlFor="phoneNumber">Phone Number</Label>
                                     <div className="relative">
@@ -425,14 +506,13 @@ export default function AuthPage() {
                                             type="tel"
                                             value={registerData.phoneNumber}
                                             onChange={handleRegisterChange}
-                                            placeholder="Enter phone number"
+                                            placeholder="Enter phone number (optional)"
                                             className="pl-10"
-                                            required
                                             disabled={isLoading}
                                         />
                                     </div>
                                 </div>
-                                {/* Location */}
+                                {/* Location - Made optional */}
                                 <div className="space-y-1">
                                     <Label htmlFor="location">Location</Label>
                                     <div className="relative">
@@ -443,9 +523,8 @@ export default function AuthPage() {
                                             type="text"
                                             value={registerData.location}
                                             onChange={handleRegisterChange}
-                                            placeholder="Enter location"
+                                            placeholder="Enter location (optional)"
                                             className="pl-10"
-                                            required
                                             disabled={isLoading}
                                         />
                                     </div>
@@ -455,7 +534,7 @@ export default function AuthPage() {
                             <div className="space-y-4">
                                 {/* Password */}
                                 <div className="space-y-1">
-                                    <Label htmlFor="password">Password</Label>
+                                    <Label htmlFor="password">Password <span className="text-red-500">*</span></Label>
                                     <div className="relative">
                                         <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                                         <Input
@@ -482,9 +561,9 @@ export default function AuthPage() {
                                         </Button>
                                     </div>
                                 </div>
-                                {/* Image Upload */}
+                                {/* Image Upload - Improved with upload button and progress */}
                                 <div className="space-y-1">
-                                    <Label htmlFor="image">Profile Image</Label>
+                                    <Label htmlFor="image">Profile Image (Optional)</Label>
                                     <div className="relative">
                                         <Input
                                             id="image"
@@ -493,55 +572,53 @@ export default function AuthPage() {
                                             accept="image/*"
                                             onChange={handleRegisterImageChange}
                                             className="block w-full"
-                                            disabled={isLoading}
+                                            disabled={isLoading || uploadingImage}
                                         />
-                                        <Button
-                                            type="button"
-                                            variant="outline"
-                                            size="sm"
-                                            className="absolute right-0 top-0 mt-1 mr-1"
-                                            disabled={isLoading}
-                                        >
-                                            <ImagePlus className="h-4 w-4 mr-1" />
-                                            Upload
-                                        </Button>
+                                        {uploadingImage && (
+                                            <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-20 rounded">
+                                                <Upload className="h-5 w-5 text-white animate-spin" />
+                                            </div>
+                                        )}
                                     </div>
                                     {registerData.image && (
-                                        <img src={registerData.image} alt="Preview" className="w-20 h-20 rounded-full mt-2" />
+                                        <div className="mt-2 flex items-center gap-2">
+                                            <img src={registerData.image} alt="Preview" className="w-20 h-20 rounded-full object-cover" />
+                                            <Button
+                                                type="button"
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={() => { setRegisterData(prev => ({ ...prev, image: '' })); setImageFile(null); }}
+                                                disabled={isLoading}
+                                            >
+                                                Remove
+                                            </Button>
+                                        </div>
                                     )}
                                 </div>
-                                {/* Role */}
+                                {/* Role - Limited to 'user' for registration; admin only via backend */}
                                 <div className="space-y-1">
                                     <Label htmlFor="role">Role</Label>
-                                    <Select
+                                    <Input
+                                        id="role"
+                                        name="role"
+                                        type="text"
                                         value={registerData.role}
-                                        onValueChange={(value) => {
-                                            setRegisterData((prev) => ({ ...prev, role: value }));
-                                            console.log('[AuthPage] Role changed to:', value);
-                                        }}
-                                        disabled={isLoading}
-                                    >
-                                        <SelectTrigger className="w-full">
-                                            <SelectValue placeholder="Select a role" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="user">User</SelectItem>
-                                            <SelectItem value="manager">Manager</SelectItem>
-                                            <SelectItem value="admin">Admin</SelectItem>
-                                        </SelectContent>
-                                    </Select>
+                                        onChange={handleRegisterChange}
+                                        placeholder="Default: user"
+                                        className="bg-gray-50"
+                                        disabled
+                                        title="Role set by admin on approval"
+                                    />
+                                    <p className="text-xs text-gray-500 mt-1">Default: user (Admin/Manager roles assigned post-approval)</p>
                                 </div>
                             </div>
-                            <Button type="submit" className="w-full bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700" disabled={isLoading}>
+                            <Button type="submit" className="w-full bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700" disabled={isLoading || uploadingImage}>
                                 {isLoading ? 'Registering...' : 'Create Account'}
                             </Button>
                         </form>
                         <div className="mt-4 text-center">
                             <button
-                                onClick={() => {
-                                    console.log('[AuthPage] Navigating to login');
-                                    setPage('login')
-                                }}
+                                onClick={() => setPage('login')}
                                 className="text-sm text-blue-600 hover:underline"
                             >
                                 Already have an account? Login
@@ -553,15 +630,17 @@ export default function AuthPage() {
         );
     }
 
-    // Default fallback (invalid type)
-    console.log('[AuthPage] Invalid type fallback:', type);
+    // Default fallback
     return (
         <div className="min-h-screen flex items-center justify-center bg-gray-50">
             <div className="text-center">
                 <h1 className="text-2xl font-bold">Invalid Auth Type</h1>
-                <Link href="/auth/login" className="text-blue-600 hover:underline mt-4 block">
+                <button
+                    onClick={() => setPage('login')}
+                    className="text-blue-600 hover:underline mt-4 block"
+                >
                     Go to Login
-                </Link>
+                </button>
             </div>
         </div>
     );
