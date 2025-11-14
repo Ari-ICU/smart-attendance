@@ -8,7 +8,7 @@ interface DashboardPageProps {
 export const dynamic = 'force-dynamic';
 
 export default function DashboardPage({ searchParams }: DashboardPageProps) {
-  const pageParam = searchParams.page ?? btoa("dashboard");
+  const pageParam = searchParams?.page ?? btoa("dashboard");
 
   return redirect(`/dashboard?page=${pageParam}`);
 }

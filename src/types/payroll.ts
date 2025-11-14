@@ -1,3 +1,4 @@
+import { TaxSettings } from "./taxSettings";
 import { User } from "./users";
 
 export interface EmployeePayroll {
@@ -14,8 +15,9 @@ export interface EmployeePayroll {
     baseSalary: number;
     hourlyRate?: number;
     grossPay: number;
-    overtimePay: number; // NEW: Payment for overtime hours
+    overtimePay: number; 
     deductions: number;
+    tax: TaxSettings;
     netPay: number;
     status: 'pending' | 'processed' | 'paid';
     notes?: string;
