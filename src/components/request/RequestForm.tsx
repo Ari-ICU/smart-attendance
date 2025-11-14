@@ -5,190 +5,177 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { useUsers } from '@/hooks/user.hook';
-import { useDepartments } from '@/hooks/department.hook';
+import { useRequests } from "@/hooks/request.hook";
+import { useUsers } from "@/hooks/user.hook";
+import { useDepartments } from "@/hooks/department.hook";
 
 type RequestFormProps = {
-    types?: string[];         // optional
-    onSubmit: (data: { name: string; department: string; type: string; date: string; reason: string }) => void;
+    types?: string[];
     onCancel?: () => void;
+    onSubmit: (data: { user: string; department: string; type: string; date: string; reason: string }) => void;
 };
 
-export default function RequestForm({ types = [], onSubmit, onCancel }: RequestFormProps) {
-    const [name, setName] = useState("");
-    const [department, setDepartment] = useState("");
+
+export default function RequestForm({ types = [], onCancel }: RequestFormProps) {
+    const [userId, setUserId] = useState("");
+    const [deptId, setDeptId] = useState("");
     const [type, setType] = useState(types[0] || "");
     const [date, setDate] = useState("");
     const [reason, setReason] = useState("");
-    const [typeOpen, setTypeOpen] = useState(false);
-    const [deptOpen, setDeptOpen] = useState(false);
-    const [nameOpen, setNameOpen] = useState(false);
 
-    const { users, loading: userLoading } = useUsers();
-    const { departments, loading: deptLoading } = useDepartments();
+    const [openName, setOpenName] = useState(false);
+    const [openDept, setOpenDept] = useState(false);
+    const [openType, setOpenType] = useState(false);
 
-    const typeRef = useRef<HTMLDivElement>(null);
-    const deptRef = useRef<HTMLDivElement>(null);
     const nameRef = useRef<HTMLDivElement>(null);
+    const deptRef = useRef<HTMLDivElement>(null);
+    const typeRef = useRef<HTMLDivElement>(null);
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const { users, loading: loadingUsers } = useUsers();
+    const { departments, loading: loadingDepartments } = useDepartments();
+    const { createRequest, loading: loadingRequest } = useRequests();
+
+    // Close dropdown when clicking outside
+    useEffect(() => {
+        const handleClick = (event: MouseEvent) => {
+            if (nameRef.current && !nameRef.current.contains(event.target as Node)) setOpenName(false);
+            if (deptRef.current && !deptRef.current.contains(event.target as Node)) setOpenDept(false);
+            if (typeRef.current && !typeRef.current.contains(event.target as Node)) setOpenType(false);
+        };
+        document.addEventListener("mousedown", handleClick);
+        return () => document.removeEventListener("mousedown", handleClick);
+    }, []);
+
+    const selectedEmployee = users.find(e => e._id === userId);
+    const selectedDepartment = departments.find(d => d._id === deptId);
+
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!name || !date || !reason || !department || !type) return;
-        onSubmit({ name, department, type, date, reason });
-        setName("");
-        setDepartment("");
+        if (!userId || !deptId || !type || !date || !reason) return;
+
+        await createRequest({ user: userId, department: deptId, type, date, reason });
+
+        setUserId("");
+        setDeptId("");
         setType(types[0] || "");
         setDate("");
         setReason("");
-        setTypeOpen(false);
-        setDeptOpen(false);
-        setNameOpen(false);
     };
-
-    // Close dropdowns when clicking outside
-    useEffect(() => {
-        const handleClickOutside = (event: MouseEvent) => {
-            if (typeRef.current && !typeRef.current.contains(event.target as Node)) setTypeOpen(false);
-            if (deptRef.current && !deptRef.current.contains(event.target as Node)) setDeptOpen(false);
-            if (nameRef.current && !nameRef.current.contains(event.target as Node)) setNameOpen(false);
-        };
-        document.addEventListener("mousedown", handleClickOutside);
-        return () => document.removeEventListener("mousedown", handleClickOutside);
-    }, []);
 
     return (
         <form onSubmit={handleSubmit} className="space-y-4 border p-4 rounded-md bg-white shadow-sm">
-            {/* Employee Name dropdown */}
+
+            {/* Employee Dropdown */}
             <div className="relative" ref={nameRef}>
                 <Label>Employee Name</Label>
                 <Button
                     type="button"
                     variant="outline"
-                    className="w-full text-left mt-1 flex justify-between items-center"
-                    onClick={() => setNameOpen(!nameOpen)}
-                    disabled={userLoading || users.length === 0}
+                    className="w-full mt-1 justify-between"
+                    onClick={() => setOpenName(!openName)}
+                    disabled={loadingUsers}
                 >
-                    {name ? name : "Select Employee"}
-                    <span className="ml-2">{nameOpen ? "▲" : "▼"}</span>
+                    {selectedEmployee ? selectedEmployee.name : "Select Employee"}
+                    <span>{openName ? "▲" : "▼"}</span>
                 </Button>
-                {nameOpen && (
-                    <div className="absolute z-20 mt-1 w-full border rounded-md bg-white shadow-lg max-h-60 overflow-auto">
-                        {users.map((u) => (
+
+                {openName && (
+                    <div className="absolute z-20 w-full mt-1 border rounded-md bg-white shadow max-h-60 overflow-auto">
+                        {users.map(user => (
                             <div
-                                key={u.id}
-                                className={`px-3 py-2 cursor-pointer hover:bg-blue-50 ${
-                                    u.name === name ? "bg-blue-100 font-medium" : ""
-                                }`}
+                                key={user._id}
+                                className={`px-3 py-2 cursor-pointer hover:bg-blue-50 ${userId === user._id ? "bg-blue-100" : ""}`}
                                 onClick={() => {
-                                    setName(u.name);
-                                    setNameOpen(false);
+                                    setUserId(user._id);
+                                    setOpenName(false);
                                 }}
                             >
-                                {u.name}
+                                {user.name}
                             </div>
                         ))}
                     </div>
                 )}
             </div>
 
-            {/* Department dropdown */}
+            {/* Department Dropdown */}
             <div className="relative" ref={deptRef}>
                 <Label>Department</Label>
                 <Button
                     type="button"
                     variant="outline"
-                    className="w-full text-left mt-1 flex justify-between items-center"
-                    onClick={() => setDeptOpen(!deptOpen)}
-                    disabled={deptLoading || departments.length === 0}
+                    className="w-full mt-1 justify-between"
+                    onClick={() => setOpenDept(!openDept)}
+                    disabled={loadingDepartments}
                 >
-                    {department ? department.toUpperCase() : "Select Department"}
-                    <span className="ml-2">{deptOpen ? "▲" : "▼"}</span>
+                    {selectedDepartment ? selectedDepartment.name : "Select Department"}
+                    <span>{openDept ? "▲" : "▼"}</span>
                 </Button>
-                {deptOpen && (
-                    <div className="absolute z-20 mt-1 w-full border rounded-md bg-white shadow-lg max-h-60 overflow-auto">
-                        {departments.map((d) => (
+
+                {openDept && (
+                    <div className="absolute z-20 w-full mt-1 border rounded-md bg-white shadow max-h-60 overflow-auto">
+                        {departments.map(dep => (
                             <div
-                                key={d.id}
-                                className={`px-3 py-2 cursor-pointer hover:bg-blue-50 ${
-                                    d.name === department ? "bg-blue-100 font-medium" : ""
-                                }`}
+                                key={dep._id}
+                                className={`px-3 py-2 cursor-pointer hover:bg-blue-50 ${deptId === dep._id ? "bg-blue-100" : ""}`}
                                 onClick={() => {
-                                    setDepartment(d.name);
-                                    setDeptOpen(false);
+                                    setDeptId(dep._id);
+                                    setOpenDept(false);
                                 }}
                             >
-                                {d.name.toUpperCase()}
+                                {dep.name}
                             </div>
                         ))}
                     </div>
                 )}
             </div>
 
-            {/* Type dropdown */}
+            {/* Type Dropdown */}
             <div className="relative" ref={typeRef}>
                 <Label>Type</Label>
                 <Button
                     type="button"
                     variant="outline"
-                    className="w-full text-left mt-1 flex justify-between items-center"
-                    onClick={() => setTypeOpen(!typeOpen)}
-                    disabled={types.length === 0}
+                    className="w-full mt-1 justify-between"
+                    onClick={() => setOpenType(!openType)}
                 >
-                    {type ? type.toUpperCase() : "Select Type"}
-                    <span className="ml-2">{typeOpen ? "▲" : "▼"}</span>
+                    {type || "Select Type"}
+                    <span>{openType ? "▲" : "▼"}</span>
                 </Button>
-                {typeOpen && (
-                    <div className="absolute z-20 mt-1 w-full border rounded-md bg-white shadow-lg max-h-60 overflow-auto">
-                        {types.map((t) => (
+
+                {openType && (
+                    <div className="absolute z-20 w-full mt-1 border rounded-md bg-white shadow max-h-60 overflow-auto">
+                        {types.map(t => (
                             <div
                                 key={t}
-                                className={`px-3 py-2 cursor-pointer hover:bg-blue-50 ${
-                                    t === type ? "bg-blue-100 font-medium" : ""
-                                }`}
+                                className={`px-3 py-2 cursor-pointer hover:bg-blue-50 ${type === t ? "bg-blue-100" : ""}`}
                                 onClick={() => {
                                     setType(t);
-                                    setTypeOpen(false);
+                                    setOpenType(false);
                                 }}
                             >
-                                {t.toUpperCase()}
+                                {t}
                             </div>
                         ))}
                     </div>
                 )}
             </div>
 
-            {/* Date input */}
+            {/* Date */}
             <div>
-                <Label htmlFor="date">Date</Label>
-                <Input
-                    id="date"
-                    type="date"
-                    value={date}
-                    onChange={(e) => setDate(e.target.value)}
-                    required
-                    className="mt-1 w-full"
-                />
+                <Label>Date</Label>
+                <Input type="date" value={date} onChange={e => setDate(e.target.value)} required />
             </div>
 
-            {/* Reason textarea */}
+            {/* Reason */}
             <div>
-                <Label htmlFor="reason">Reason</Label>
-                <Textarea
-                    id="reason"
-                    value={reason}
-                    onChange={(e) => setReason(e.target.value)}
-                    required
-                    className="mt-1 w-full"
-                    placeholder="Enter reason for request"
-                />
+                <Label>Reason</Label>
+                <Textarea value={reason} onChange={e => setReason(e.target.value)} placeholder="Enter reason" required />
             </div>
 
             {/* Actions */}
-            <div className="flex gap-2 justify-end">
-                {onCancel && (
-                    <Button variant="outline" onClick={onCancel}>Cancel</Button>
-                )}
-                <Button type="submit" variant="default">Submit</Button>
+            <div className="flex justify-end gap-2">
+                {onCancel && <Button variant="outline" onClick={onCancel}>Cancel</Button>}
+                <Button type="submit" disabled={loadingRequest}>{loadingRequest ? "Submitting..." : "Submit"}</Button>
             </div>
         </form>
     );

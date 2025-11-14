@@ -46,4 +46,11 @@ export const BASE_URL = {
         UPDATE_STATUS: (id: string) => `${API_BASE_URL}/payroll/${id}/status`, // PUT
         EXPORT_PAYSLIP: (id: string) => `${API_BASE_URL}/payroll/${id}/payslip`, // GET PDF
     },
+    REQUEST_API: {
+        CREATE_REQUEST: `${API_BASE_URL}/requests`,
+        GET_REQUESTS: `${API_BASE_URL}/requests`,
+        GET_REQUEST: (id: string) => `${API_BASE_URL}/requests/${id}`,
+        APPROVE_REQUEST: (id: string) => `${API_BASE_URL}/requests/${id}/approve`,
+        REJECT_REQUEST: (id: string) => `${API_BASE_URL}/requests/${id}/reject`,
+    },
 };
