@@ -1,6 +1,7 @@
 // File: components/payroll/PayrollTable.tsx
 'use client';
-import React, { useState } from 'react';
+
+import React, { useState, useEffect } from 'react';
 import { Card } from '../ui/card';
 import { Table, TableHeader, TableHead, TableRow } from '../ui/table';
 import { Badge } from '../ui/badge';
@@ -33,6 +34,9 @@ interface PayrollTableProps {
 }
 
 export function PayrollTable(props: PayrollTableProps) {
+    // ✅ Mounted flag to prevent SSR/client mismatch
+    const [mounted, setMounted] = useState(false);
+
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isViewModalOpen, setIsViewModalOpen] = useState(false);
     const [selectedPayroll, setSelectedPayroll] = useState<EmployeePayroll | null>(null);
@@ -42,6 +46,14 @@ export function PayrollTable(props: PayrollTableProps) {
 
     const { departments: allDepartments } = useDepartments();
 
+    // ✅ Set mounted after first render
+    useEffect(() => {
+        setMounted(true);
+    }, []);
+
+    // -----------------------
+    // Helpers
+    // -----------------------
     const formatHours = (hours?: number) => {
         const totalMinutes = Math.round((hours ?? 0) * 60);
         const hh = Math.floor(totalMinutes / 60);
@@ -50,7 +62,7 @@ export function PayrollTable(props: PayrollTableProps) {
     };
 
     const formatCurrency = (value?: number) =>
-        (value ?? 0).toLocaleString('en-US', { style: 'currency', currency: 'USD' });
+        new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(value ?? 0);
 
     const getStatusBadge = (status: 'pending' | 'processed' | 'paid') => {
         const variants = {
@@ -61,6 +73,9 @@ export function PayrollTable(props: PayrollTableProps) {
         return <Badge className={`border ${variants[status]}`}>{status}</Badge>;
     };
 
+    // -----------------------
+    // Handlers
+    // -----------------------
     const handleView = (payroll: EmployeePayroll) => {
         setSelectedPayroll(payroll);
         setIsViewModalOpen(true);
@@ -106,13 +121,20 @@ export function PayrollTable(props: PayrollTableProps) {
     const handlePayAllPending = async () => {
         const pendingPayrolls = props.filteredPayrolls.filter(p => p.status !== 'paid');
         for (const p of pendingPayrolls) {
-            await handlePay(p._id);
+            await handlePay(p._id.toString());
         }
     };
 
     const handleDownload = () => {
         props.filteredPayrolls.forEach(p => props.exportPayslip(p._id.toString()));
     };
+
+    // -----------------------
+    // Render (only after mount)
+    // -----------------------
+    if (!mounted) return null;
+
+    const filteredPayrollsSafe = props.filteredPayrolls ?? [];
 
     return (
         <div className="px-4 py-6 max-w-full">
@@ -128,9 +150,9 @@ export function PayrollTable(props: PayrollTableProps) {
                 setIsModalOpen={setIsModalOpen}
                 handleDownload={handleDownload}
                 handlePayAllPending={handlePayAllPending}
-                filteredPayrolls={props.filteredPayrolls}
+                filteredPayrolls={filteredPayrollsSafe}
             />
-            <PayrollStats filteredPayrolls={props.filteredPayrolls} />
+            <PayrollStats filteredPayrolls={filteredPayrollsSafe} />
             <Card className="overflow-hidden border px-2">
                 <div className="overflow-x-auto">
                     <Table>
@@ -153,7 +175,7 @@ export function PayrollTable(props: PayrollTableProps) {
                             </TableRow>
                         </TableHeader>
                         <PayrollTableRows
-                            filteredPayrolls={props.filteredPayrolls}
+                            filteredPayrolls={filteredPayrollsSafe}
                             isLoading={props.isLoading}
                             formatHours={formatHours}
                             formatCurrency={formatCurrency}
@@ -164,6 +186,7 @@ export function PayrollTable(props: PayrollTableProps) {
                     </Table>
                 </div>
             </Card>
+
             <GeneratePayrollModal
                 isModalOpen={isModalOpen}
                 setIsModalOpen={setIsModalOpen}
@@ -176,6 +199,7 @@ export function PayrollTable(props: PayrollTableProps) {
                 handleGeneratePayroll={handleGeneratePayroll}
                 isSubmitting={props.isSubmitting}
             />
+
             <ViewPayrollModal
                 isOpen={isViewModalOpen}
                 onClose={() => setIsViewModalOpen(false)}

@@ -1,6 +1,6 @@
-// services/request.service.ts
+// services/request.service.ts (Updated: Include createApprovalRequest)
 import { BASE_URL } from '@/lib/api/apiUrl';
-import { CreateRequestPayload , Request   } from '@/types/request';
+import { CreateRequestPayload, CreateApprovalRequestPayload, Request } from '@/types/request';
 
 export interface ApiResponse<T> {
     success: boolean;
@@ -12,7 +12,10 @@ export const requestService = {
     async createRequest(payload: CreateRequestPayload): Promise<Request> {
         const response = await fetch(BASE_URL.REQUEST_API.CREATE_REQUEST, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('token')}` // Assume token stored
+            },
             body: JSON.stringify(payload),
         });
 
@@ -24,10 +27,31 @@ export const requestService = {
         return result.data;
     },
 
+    async createApprovalRequest(payload: CreateApprovalRequestPayload): Promise<Request> {
+        const response = await fetch(BASE_URL.REQUEST_API.CREATE_APPROVAL_REQUEST, {
+            method: 'POST',
+            headers: { 
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('token')}` 
+            },
+            body: JSON.stringify(payload),
+        });
+
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+
+        const result: ApiResponse<Request> = await response.json();
+        if (!result.success) throw new Error(result.message || 'Failed to create approval request');
+
+        return result.data;
+    },
+
     async getRequests(): Promise<Request[]> {
         const response = await fetch(BASE_URL.REQUEST_API.GET_REQUESTS, {
             method: 'GET',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('token')}` 
+            },
         });
 
         if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
@@ -41,7 +65,10 @@ export const requestService = {
     async getRequest(id: string): Promise<Request> {
         const response = await fetch(BASE_URL.REQUEST_API.GET_REQUEST(id), {
             method: 'GET',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('token')}` 
+            },
         });
 
         if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
@@ -55,7 +82,10 @@ export const requestService = {
     async approveRequest(id: string): Promise<Request> {
         const response = await fetch(BASE_URL.REQUEST_API.APPROVE_REQUEST(id), {
             method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('token')}` 
+            },
         });
 
         if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
@@ -69,7 +99,10 @@ export const requestService = {
     async rejectRequest(id: string): Promise<Request> {
         const response = await fetch(BASE_URL.REQUEST_API.REJECT_REQUEST(id), {
             method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('token')}` 
+            },
         });
 
         if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
