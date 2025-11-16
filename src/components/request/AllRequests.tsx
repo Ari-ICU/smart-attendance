@@ -10,7 +10,7 @@ import { useRequests } from "@/hooks/request.hook";
 
 export default function AllRequests() {
     const { setPage } = useDashboardPage();
-    const { requests, loading, error, approveRequest, rejectRequest, isAdmin, isLoggedIn, user } = useRequests(); 
+    const { requests, loading, approveRequest, rejectRequest } = useRequests(); 
 
     const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
     const [filterType, setFilterType] = useState("All");
@@ -24,70 +24,25 @@ export default function AllRequests() {
         setCollapsedGroups(initialCollapsed);
     }, [requests]);
 
-    // ✅ Fixed: Handle auth errors (e.g., redirect or show message if not logged in/approved)
-    useEffect(() => {
-        if (error && (error.includes('401') || error.includes('403'))) {
-            // Optionally redirect to login or show toast
-            console.error('Auth error:', error);
-            // Example: window.location.href = '/login'; // Uncomment if needed
-        }
-    }, [error]);
-
     const toggleGroup = (type: string) => {
         setCollapsedGroups(prev => ({ ...prev, [type]: !prev[type] }));
     };
 
     const handleApprove = async (requestId: string) => {
-        if (!isAdmin) {
-            alert('Admin permissions required.'); // Or use toast notification
-            return;
-        }
         try {
             await approveRequest(requestId);
         } catch (err) {
             console.error("Failed to approve request", err);
-            // Error already handled in hook
         }
     };
 
     const handleReject = async (requestId: string) => {
-        if (!isAdmin) {
-            alert('Admin permissions required.'); // Or use toast notification
-            return;
-        }
         try {
             await rejectRequest(requestId);
         } catch (err) {
             console.error("Failed to reject request", err);
-            // Error already handled in hook
         }
     };
-
-    // ✅ Fixed: Show message if not logged in or not approved
-    if (!isLoggedIn || !user?.status || user.status !== 'approved') {
-        return (
-            <div className="flex items-center justify-center h-64 text-center">
-                <div>
-                    <h2 className="text-xl font-semibold mb-2">Access Denied</h2>
-                    <p className="text-muted-foreground mb-4">You need to be logged in and approved to view requests.</p>
-                    <Button onClick={() => window.location.href = '/login'}>Go to Login</Button>
-                </div>
-            </div>
-        );
-    }
-
-    // ✅ Fixed: Show error if present
-    if (error && !loading) {
-        return (
-            <div className="flex items-center justify-center h-64 text-center">
-                <div>
-                    <h2 className="text-xl font-semibold mb-2">Error</h2>
-                    <p className="text-destructive mb-4">{error}</p>
-                    <Button onClick={() => window.location.reload()}>Retry</Button>
-                </div>
-            </div>
-        );
-    }
 
     const filteredRequests = filterType === "All"
         ? requests
@@ -115,7 +70,7 @@ export default function AllRequests() {
         return new Intl.DateTimeFormat(undefined, { year: "numeric", month: "short", day: "numeric" }).format(date);
     };
 
-    if (loading) return <div className="flex items-center justify-center h-64">Loading requests...</div>;
+    if (loading) return <div>Loading requests...</div>;
 
     return (
         <div className="space-y-6">
@@ -155,34 +110,11 @@ export default function AllRequests() {
                                         </span>
                                     </div>
                                     <div className="flex gap-2">
-                                        {/* ✅ Fixed: Conditionally render approve/reject buttons only for admins and pending status */}
-                                        {isAdmin && request.status?.toLowerCase() === "pending" && (
+                                        {request.status?.toLowerCase() === "pending" && (
                                             <>
-                                                <Button 
-                                                    size="sm" 
-                                                    variant="outline" 
-                                                    onClick={(e) => { 
-                                                        e.stopPropagation(); 
-                                                        handleApprove(request._id); 
-                                                    }}
-                                                >
-                                                    Approve
-                                                </Button>
-                                                <Button 
-                                                    size="sm" 
-                                                    variant="destructive" 
-                                                    onClick={(e) => { 
-                                                        e.stopPropagation(); 
-                                                        handleReject(request._id); 
-                                                    }}
-                                                >
-                                                    Reject
-                                                </Button>
+                                                <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); handleApprove(request._id); }}>Approve</Button>
+                                                <Button size="sm" variant="destructive" onClick={(e) => { e.stopPropagation(); handleReject(request._id); }}>Reject</Button>
                                             </>
-                                        )}
-                                        {/* ✅ Optional: Show info for non-admins */}
-                                        {!isAdmin && request.status?.toLowerCase() === "pending" && (
-                                            <span className="text-xs text-muted-foreground">Admin Review</span>
                                         )}
                                     </div>
                                 </li>
