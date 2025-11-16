@@ -1,7 +1,7 @@
-// hooks/request.hook.ts
+// hooks/request.hook.ts (Updated: Added createApprovalRequest; no other changes needed as it uses updated types)
 import { useState, useEffect } from 'react';
 import { requestService } from '@/service/request.service'
-import {  Request, CreateRequestPayload } from '@/types/request';
+import { Request, CreateRequestPayload, CreateApprovalRequestPayload } from '@/types/request';
 
 export const useRequests = () => {
     const [requests, setRequests] = useState<Request[]>([]);
@@ -30,6 +30,20 @@ export const useRequests = () => {
             return newRequest;
         } catch (err: any) {
             setError(err.message || 'Failed to create request');
+            throw err;
+        }
+    };
+
+    // ✅ Added: For creating approval requests
+    const createApprovalRequest = async (payload: CreateApprovalRequestPayload): Promise<Request> => {
+        setError(null);
+        try {
+            const newRequest = await requestService.createApprovalRequest(payload);
+            // Update local state immediately without refetching
+            setRequests(prev => [newRequest, ...prev]);
+            return newRequest;
+        } catch (err: any) {
+            setError(err.message || 'Failed to create approval request');
             throw err;
         }
     };
@@ -66,5 +80,14 @@ export const useRequests = () => {
 
     const refetch = fetchRequests;
 
-    return { requests, loading, error, createRequest, approveRequest, rejectRequest, refetch };
+    return { 
+        requests, 
+        loading, 
+        error, 
+        createRequest, 
+        createApprovalRequest, // ✅ Added
+        approveRequest, 
+        rejectRequest, 
+        refetch 
+    };
 };

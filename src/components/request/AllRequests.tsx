@@ -7,6 +7,7 @@ import { useDashboardPage } from "@/hooks/useDashboardPage";
 import RequestDetailModal from "./RequestDetailModal";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { useRequests } from "@/hooks/request.hook";
+import { Request } from "@/types/request"; // ✅ Ensure import for updated type
 
 export default function AllRequests() {
     const { setPage } = useDashboardPage();
@@ -14,7 +15,7 @@ export default function AllRequests() {
 
     const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
     const [filterType, setFilterType] = useState("All");
-    const [selectedRequest, setSelectedRequest] = useState<typeof requests[0] | null>(null);
+    const [selectedRequest, setSelectedRequest] = useState<Request | null>(null); // ✅ Updated type
     const [isModalOpen, setIsModalOpen] = useState(false);
 
     useEffect(() => {
@@ -48,7 +49,7 @@ export default function AllRequests() {
         ? requests
         : requests.filter(r => r.type === filterType);
 
-    const groupedRequests = filteredRequests.reduce<Record<string, typeof requests[0][]>>((acc, req) => {
+    const groupedRequests = filteredRequests.reduce<Record<string, Request[]>>((acc, req) => { // ✅ Updated type
         if (!acc[req.type]) acc[req.type] = [];
         acc[req.type].push(req);
         return acc;
@@ -68,6 +69,17 @@ export default function AllRequests() {
     const formatDate = (dateStr: string) => {
         const date = new Date(dateStr);
         return new Intl.DateTimeFormat(undefined, { year: "numeric", month: "short", day: "numeric" }).format(date);
+    };
+
+    // ✅ Helper: Get display name (fallback to pendingUser for registrations)
+    const getDisplayName = (request: Request) => {
+        return request.user?.name || request.pendingUser?.name || 'Unknown User';
+    };
+
+    // ✅ Helper: Get display email/subtitle (for pending, show email)
+    const getDisplaySubtitle = (request: Request) => {
+        const userEmail = request.user ? undefined : request.pendingUser?.email;
+        return `${request.department.name} | ${formatDate(request.date)} - ${request.reason}${userEmail ? ` | New: ${userEmail}` : ''}`;
     };
 
     if (loading) return <div>Loading requests...</div>;
@@ -101,9 +113,9 @@ export default function AllRequests() {
                                     onClick={() => { setSelectedRequest(request); setIsModalOpen(true); }}
                                 >
                                     <div>
-                                        <p className="font-semibold">{request.user.name}</p>
+                                        <p className="font-semibold">{getDisplayName(request)}</p> {/* ✅ Updated: Fallback to pendingUser */}
                                         <p className="text-sm text-muted-foreground">
-                                            {request.department.name} | {formatDate(request.date)} - {request.reason}
+                                            {getDisplaySubtitle(request)} {/* ✅ Updated: Show email for pending */}
                                         </p>
                                         <span className={`inline-block mt-1 px-2 py-1 text-xs font-semibold rounded ${getStatusClass(request.status)}`}>
                                             {request.status ? request.status.charAt(0).toUpperCase() + request.status.slice(1) : "Pending"}

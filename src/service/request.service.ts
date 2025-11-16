@@ -1,6 +1,6 @@
-// services/request.service.ts
+// services/request.service.ts (Updated: Added createApprovalRequest; kept existing methods)
 import { BASE_URL } from '@/lib/api/apiUrl';
-import { CreateRequestPayload , Request   } from '@/types/request';
+import { CreateRequestPayload, CreateApprovalRequestPayload, Request } from '@/types/request';
 
 export interface ApiResponse<T> {
     success: boolean;
@@ -20,6 +20,22 @@ export const requestService = {
 
         const result: ApiResponse<Request> = await response.json();
         if (!result.success) throw new Error(result.message || 'Failed to create request');
+
+        return result.data;
+    },
+
+    // ✅ Added: For creating approval requests (supports both existing users and new registrations)
+    async createApprovalRequest(payload: CreateApprovalRequestPayload): Promise<Request> {
+        const response = await fetch(BASE_URL.REQUEST_API.CREATE_APPROVAL_REQUEST, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+        });
+
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+
+        const result: ApiResponse<Request> = await response.json();
+        if (!result.success) throw new Error(result.message || 'Failed to create approval request');
 
         return result.data;
     },
